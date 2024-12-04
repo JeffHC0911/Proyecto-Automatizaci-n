@@ -14,18 +14,24 @@ cursor.execute('''
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha_hora TEXT NOT NULL,
         nivel REAL NOT NULL,
-        porcentaje REAL NOT NULL
+        porcentaje REAL NOT NULL,
+        rain_humidity REAL NOT NULL
     )
 ''')
 conn.commit()
 
-def save_to_db(fecha_hora, nivel, porcentaje):
-    with db_lock:  # Asegura que solo un hilo acceda a la base de datos a la vez
-        cursor.execute(''' 
-            INSERT INTO lecturas (fecha_hora, nivel, porcentaje)
-            VALUES (?, ?, ?)
-        ''', (fecha_hora, nivel, porcentaje))
-        conn.commit()
+# Función para guardar los datos en la base de datos
+def save_to_db(timestamp, water_level, tank_percentage, rain_humidity):
+    # Aquí debes agregar la lógica para guardar los datos, incluyendo la humedad del sensor de lluvia
+    query = """
+        INSERT INTO lecturas (timestamp, water_level, tank_percentage, rain_humidity)
+        VALUES (?, ?, ?, ?)
+    """
+    params = (timestamp, water_level, tank_percentage, rain_humidity)
+    # Ejecutar el query en la base de datos
+    cursor.execute(query, params)
+    conn.commit()
+
 
 # Función para obtener todas las lecturas desde la base de datos
 def get_all_readings():

@@ -25,12 +25,12 @@ temp_tank_status = None
 SAVE_INTERVAL = 60
 last_save_time = time.time()
 
-# Función para actualizar los datos del tanque
+# Función para actualizar los datos del tanque y sensor de lluvia
 def update_tank_display(tank_percentage, water_level, tank_status):
     # Actualizar los valores de los widgets
     tank_level.set(f"{water_level} cm")
     humidity_level.set(f"{tank_percentage}%")
-    leak_sensor.set(tank_status)
+    leak_sensor.set(f"Estado del Tanque: {tank_status}")
 
     # Dibuja el nivel de agua
     canvas.delete("water")  # Borra el agua anterior
@@ -38,12 +38,12 @@ def update_tank_display(tank_percentage, water_level, tank_status):
     canvas.create_rectangle(50, 200 - water_height, 150, 200, fill="deepskyblue", tags="water")
     
     # Cambiar el color del contorno según el nivel del tanque
-    if tank_percentage >= 90:
+    if tank_percentage >= 70:
         canvas.itemconfig(tank_outline, outline="red", width=3)
-    elif tank_percentage >= 70:
-        canvas.itemconfig(tank_outline, outline="yellow", width=3)
-    else:
+    elif tank_percentage >= 30:
         canvas.itemconfig(tank_outline, outline="green", width=3)
+    else:
+        canvas.itemconfig(tank_outline, outline="yellow", width=3)
 
     # Agregar los nuevos datos a la lista de gráficos
     timestamps.append(time.strftime("%H:%M:%S"))
@@ -56,6 +56,7 @@ def update_tank_display(tank_percentage, water_level, tank_status):
 
     # Actualizar el gráfico
     update_graph()
+
 
 # Función para actualizar la gráfica
 def update_graph():
@@ -83,12 +84,13 @@ def refresh_data_and_graph(root):
 
 # Función que lee datos del puerto serial (de Arduino)
 def read_arduino_data():
-    global temp_timestamp, temp_water_level, temp_tank_percentage, temp_tank_status, last_save_time
+    global temp_timestamp, temp_water_level, temp_tank_percentage, temp_tank_status, temp_rain_humidity, last_save_time
     while True:
         try:
             if arduino.in_waiting > 0:
                 line = arduino.readline().decode('utf-8').strip()  # Leer línea desde el Arduino
                 if line:
+                    # Si la línea contiene los datos del tanque
                     if "Nivel de agua:" in line:
                         parts = line.split(" ")
                         water_level = float(parts[3])  # Nivel en cm
@@ -107,16 +109,26 @@ def read_arduino_data():
                         # Actualiza la interfaz gráfica con los nuevos datos
                         update_tank_display(tank_percentage, water_level, tank_status)
 
-                        # Verificar si ha pasado el intervalo de tiempo para guardar los datos
-                        if time.time() - last_save_time >= SAVE_INTERVAL:
-                            # Guardar en la base de datos
-                            save_to_db(temp_timestamp, temp_water_level, temp_tank_percentage)
+                    # Si la línea contiene los datos del sensor de lluvia
+                    elif "Humedad: " in line:
+                        # Extraer la humedad del sensor de lluvia
+                        rain_humidity = int(line.split(": ")[1])  # Obtener el valor después de "Humedad: "
+                        temp_rain_humidity = rain_humidity  # Guardar la humedad del sensor de lluvia
 
-                            # Actualizar el tiempo de la última vez que se guardaron los datos
-                            last_save_time = time.time()
+                        # Mostrar el valor en la interfaz gráfica (si lo deseas)
+                        leak_sensor.set(f"Humedad Sensor de Lluvia: {rain_humidity}%")
+
+                    # Verificar si ha pasado el intervalo de tiempo para guardar los datos
+                    if time.time() - last_save_time >= SAVE_INTERVAL:
+                        # Guardar en la base de datos
+                        save_to_db(temp_timestamp, temp_water_level, temp_tank_percentage, temp_rain_humidity)
+
+                        # Actualizar el tiempo de la última vez que se guardaron los datos
+                        last_save_time = time.time()
 
         except Exception as e:
             print(f"Error leyendo datos del Arduino: {e}")
+
 
 # Función para mostrar la pantalla principal
 def show_main_screen():
