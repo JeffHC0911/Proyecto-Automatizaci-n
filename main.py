@@ -116,7 +116,18 @@ def read_arduino_data():
                         temp_rain_humidity = rain_humidity  # Guardar la humedad del sensor de lluvia
 
                         # Mostrar el valor en la interfaz gráfica (si lo deseas)
-                        leak_sensor.set(f"Humedad Sensor de Lluvia: {rain_humidity}%")
+                        fuga_sensor.set(f"Humedad Sensor de Lluvia: {rain_humidity}%")
+
+                        if rain_humidity >= 900:
+                            fuga_sensor.set("No hay fugas")
+                        elif rain_humidity >= 700:
+                            fuga_sensor.set("Humedad baja, posible fuga pequena")
+                        elif rain_humidity >= 500:
+                            fuga_sensor.set("Humedad media, posible fuga")
+                        elif rain_humidity >= 300:
+                            fuga_sensor.set("Humedad alta, posible fuga detectada")
+                        else:
+                            fuga_sensor.set("Fuga detectada o psoible lluvia")
 
                     # Verificar si ha pasado el intervalo de tiempo para guardar los datos
                     if time.time() - last_save_time >= SAVE_INTERVAL:
@@ -139,12 +150,17 @@ def show_main_screen():
     info_frame = tk.Frame(main_frame, bg="#e0f7fa", width=300)
     info_frame.pack(side="left", fill="y", padx=20)
 
-    tk.Label(info_frame, text="Nivel del Tanque:", font=("Segoe UI", 16), bg="#e0f7fa", fg="black").pack(pady=10)
-    tk.Label(info_frame, textvariable=tank_level, font=("Segoe UI", 14), bg="#e0f7fa", fg="black").pack(pady=5)
-    tk.Label(info_frame, text="Porcentaje de Llenado:", font=("Segoe UI", 16), bg="#e0f7fa", fg="black").pack(pady=10)
-    tk.Label(info_frame, textvariable=humidity_level, font=("Segoe UI", 14), bg="#e0f7fa", fg="black").pack(pady=5)
-    tk.Label(info_frame, text="Estado del Tanque:", font=("Segoe UI", 16), bg="#e0f7fa", fg="black").pack(pady=10)
-    tk.Label(info_frame, textvariable=leak_sensor, font=("Segoe UI", 14), bg="#e0f7fa", fg="black").pack(pady=5)
+    tk.Label(info_frame, text="Nivel del Tanque:", font=("Segoe UI", 14), bg="blue", fg="white").pack(pady=8)
+    tk.Label(info_frame, textvariable=tank_level, font=("Segoe UI", 12), bg="#e0f7fa", fg="black").pack(pady=5)
+    tk.Label(info_frame, text="Porcentaje de Llenado:", font=("Segoe UI", 14), bg="blue", fg="white").pack(pady=8)
+    tk.Label(info_frame, textvariable=humidity_level, font=("Segoe UI", 12), bg="#e0f7fa", fg="black").pack(pady=5)
+    tk.Label(info_frame, text="Estado del Tanque:", font=("Segoe UI", 14), bg="blue", fg="white").pack(pady=8)
+    tk.Label(info_frame, textvariable=leak_sensor, font=("Segoe UI", 12), bg="#e0f7fa", fg="black").pack(pady=5)
+    tk.Label(info_frame, text="Fugas del Tanque:", font=("Segoe UI", 14), bg="blue", fg="white").pack(pady=8)
+    tk.Label(info_frame, textvariable=fuga_sensor, font=("Segoe UI", 12), bg="#e0f7fa", fg="black").pack(pady=5)
+
+
+    
 
     # Canvas para mostrar el gráfico del tanque
     global canvas
@@ -205,13 +221,13 @@ def show_table():
     # Mostrar estadísticas
     avg_tank = sum(row[2] for row in data) / len(data) if data else 0
     avg_humidity = sum(row[3] for row in data) / len(data) if data else 0
-    alert_days = len([row for row in data if row[3] < 30])
+    #alert_days = len([row for row in data if row[3] < 30])
 
     stats_frame = tk.Frame(main_frame, bg="#e0f7fa", padx=20)
     stats_frame.pack(fill="x")
     tk.Label(stats_frame, text=f"Promedio Nivel de Tanque: {avg_tank:.2f} cm", font=("Segoe UI", 12), bg="#e0f7fa").pack(pady=10)
     tk.Label(stats_frame, text=f"Promedio Porcentaje de Llenado: {avg_humidity:.2f}%", font=("Segoe UI", 12), bg="#e0f7fa").pack(pady=10)
-    tk.Label(stats_frame, text=f"Días con ALERTA (Nivel bajo): {alert_days}", font=("Segoe UI", 12), bg="#e0f7fa").pack(pady=10)
+    #tk.Label(stats_frame, text=f"Días con ALERTA (Nivel bajo): {alert_days}", font=("Segoe UI", 12), bg="#e0f7fa").pack(pady=10)
 
     # Botón de regreso
     ttk.Button(main_frame, text="Regresar a la Pantalla Principal", command=show_main_screen).pack(pady=10)
@@ -219,7 +235,7 @@ def show_table():
 # Función principal para inicializar la interfaz
 def main():
     root = tk.Tk()
-    root.title("Monitoreo de Tanque")
+    root.title("Monitoreo de Tanque en Zonas Remotas")
     root.geometry("1000x600")
     root.config(bg="#e0f7fa")
 
@@ -227,10 +243,11 @@ def main():
     main_frame = tk.Frame(root, bg="#e0f7fa")
     main_frame.pack(fill="both", expand=True)
 
-    global tank_level, humidity_level, leak_sensor
+    global tank_level, humidity_level, leak_sensor, fuga_sensor
     tank_level = tk.StringVar()
     humidity_level = tk.StringVar()
     leak_sensor = tk.StringVar()
+    fuga_sensor = tk.StringVar()
 
     # Llamar a la pantalla principal
     show_main_screen()
