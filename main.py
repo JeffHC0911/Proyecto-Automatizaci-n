@@ -177,10 +177,12 @@ def show_table():
         nivel_tanque = row[2]
         porcentaje = row[3]
 
-        if porcentaje >= 90:
+        if porcentaje >= 70:
+            estado = "Tanque casi lleno"
+        elif porcentaje >= 30:
             estado = "Nivel óptimo"
-        elif porcentaje >= 70:
-            estado = "Nivel bajo"
+        elif porcentaje >= 15:
+            estado = "¡ALERTA! Tanque en nive bajo"
         else:
             estado = "¡ALERTA! Tanque casi vacío"
 
