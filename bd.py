@@ -12,9 +12,9 @@ cursor = conn.cursor()
 cursor.execute(''' 
     CREATE TABLE IF NOT EXISTS lecturas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        fecha_hora TEXT NOT NULL,
-        nivel REAL NOT NULL,
-        porcentaje REAL NOT NULL,
+        timestamp TEXT NOT NULL,
+        water_level REAL NOT NULL,
+        tank_percentage REAL NOT NULL,
         rain_humidity REAL NOT NULL
     )
 ''')
@@ -36,11 +36,11 @@ def save_to_db(timestamp, water_level, tank_percentage, rain_humidity):
 # Función para obtener todas las lecturas desde la base de datos
 def get_all_readings():
     with db_lock:  # Asegura que solo un hilo acceda a la base de datos a la vez
-        cursor.execute("SELECT * FROM lecturas ORDER BY fecha_hora DESC")
+        cursor.execute("SELECT * FROM lecturas ORDER BY timestamp DESC")
         rows = cursor.fetchall()
     return rows
 
 def delete_old_data():
     with db_lock:  # Asegura que solo un hilo acceda a la base de datos a la vez
-        cursor.execute("DELETE FROM lecturas WHERE fecha_hora < datetime('now', '-30 days')")
+        cursor.execute("DELETE FROM lecturas WHERE timestamp < datetime('now', '-30 days')")
         conn.commit()  # Elimina datos más antiguos que 30 días (puedes cambiar el intervalo)

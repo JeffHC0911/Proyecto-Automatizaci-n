@@ -59,6 +59,8 @@ def update_tank_display(tank_percentage, water_level, tank_status):
 
 
 # Función para actualizar la gráfica
+import numpy as np
+
 def update_graph():
     ax.clear()  # Limpiar el gráfico anterior
     ax.plot(timestamps, water_levels, marker='o', color='deepskyblue', linestyle='-', linewidth=2)
@@ -68,8 +70,14 @@ def update_graph():
     ax.set_ylabel("Nivel del Tanque (cm)", fontsize=10)
     ax.set_title("Comportamiento del Nivel de Agua en el Tanque", fontsize=12)
 
+    # Ajustar los ticks del eje Y para que sean cada 1 cm
+    y_min, y_max = ax.get_ylim()  # Obtener los límites actuales del eje Y
+    y_ticks = np.arange(np.floor(y_min), np.ceil(y_max)+1, 1)  # Crear los ticks con intervalos de 1 cm
+    ax.set_yticks(y_ticks)
+
     # Redibujar el gráfico
     canvas_graph.draw()
+
 
 # Función para actualizar los datos y la gráfica cada minuto
 def refresh_data_and_graph(root):
@@ -80,7 +88,7 @@ def refresh_data_and_graph(root):
     update_graph()
 
     # Reprogramar la actualización después de un minuto
-    root.after(60000, refresh_data_and_graph)
+    root.after(60000, refresh_data_and_graph, root)
 
 # Función que lee datos del puerto serial (de Arduino)
 def read_arduino_data():
