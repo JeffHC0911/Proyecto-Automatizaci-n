@@ -15,6 +15,16 @@ arduino = serial.Serial(port=arduino_port, baudrate=9600, timeout=1)
 timestamps = []
 water_levels = []
 
+# Variables para almacenar los datos temporales
+temp_timestamp = None
+temp_water_level = None
+temp_tank_percentage = None
+temp_tank_status = None
+
+# Intervalo en segundos para guardar los datos (Ej. cada 60 segundos)
+SAVE_INTERVAL = 60
+last_save_time = time.time()
+
 # Función para actualizar los datos del tanque
 def update_tank_display(tank_percentage, water_level, tank_status):
     # Actualizar los valores de los widgets
@@ -60,8 +70,20 @@ def update_graph():
     # Redibujar el gráfico
     canvas_graph.draw()
 
+# Función para actualizar los datos y la gráfica cada minuto
+def refresh_data_and_graph(root):
+    # Aquí va la lógica para leer los nuevos datos del Arduino
+    # ...
+
+    # Llamamos a la función que actualiza la gráfica
+    update_graph()
+
+    # Reprogramar la actualización después de un minuto
+    root.after(60000, refresh_data_and_graph)
+
 # Función que lee datos del puerto serial (de Arduino)
 def read_arduino_data():
+    global temp_timestamp, temp_water_level, temp_tank_percentage, temp_tank_status, last_save_time
     while True:
         try:
             if arduino.in_waiting > 0:
@@ -76,11 +98,23 @@ def read_arduino_data():
                         # Obtener la fecha y hora actual
                         fecha_hora = time.strftime("%Y-%m-%d %H:%M:%S")
 
-                        # Guardar los datos en la base de datos
-                        save_to_db(fecha_hora, water_level, tank_percentage)
-                        
+                        # Guardar los datos temporalmente
+                        temp_timestamp = fecha_hora
+                        temp_water_level = water_level
+                        temp_tank_percentage = tank_percentage
+                        temp_tank_status = tank_status
+
                         # Actualiza la interfaz gráfica con los nuevos datos
                         update_tank_display(tank_percentage, water_level, tank_status)
+
+                        # Verificar si ha pasado el intervalo de tiempo para guardar los datos
+                        if time.time() - last_save_time >= SAVE_INTERVAL:
+                            # Guardar en la base de datos
+                            save_to_db(temp_timestamp, temp_water_level, temp_tank_percentage)
+
+                            # Actualizar el tiempo de la última vez que se guardaron los datos
+                            last_save_time = time.time()
+
         except Exception as e:
             print(f"Error leyendo datos del Arduino: {e}")
 
@@ -157,43 +191,42 @@ def show_table():
     # Mostrar estadísticas
     avg_tank = sum(row[2] for row in data) / len(data) if data else 0
     avg_humidity = sum(row[3] for row in data) / len(data) if data else 0
-    alert_days = sum(1 for row in data if "¡ALERTA!" in ("Nivel bajo" if row[3] < 70 else "Nivel óptimo"))
+    alert_days = len([row for row in data if row[3] < 30])
 
-    stats_label = tk.Label(main_frame, text=f"Estadísticas:\n"
-                                            f"Promedio del nivel del tanque: {avg_tank:.2f} cm\n"
-                                            f"Promedio de humedad: {avg_humidity:.2f}%\n"
-                                            f"Días con alertas: {alert_days}",
-                           font=("Segoe UI", 12), justify=tk.LEFT, bg="#e0f7fa", fg="black")
-    stats_label.pack(pady=15)
+    stats_frame = tk.Frame(main_frame, bg="#e0f7fa", padx=20)
+    stats_frame.pack(fill="x")
+    tk.Label(stats_frame, text=f"Promedio Nivel de Tanque: {avg_tank:.2f} cm", font=("Segoe UI", 12), bg="#e0f7fa").pack(pady=10)
+    tk.Label(stats_frame, text=f"Promedio Porcentaje de Llenado: {avg_humidity:.2f}%", font=("Segoe UI", 12), bg="#e0f7fa").pack(pady=10)
+    tk.Label(stats_frame, text=f"Días con ALERTA (Nivel bajo): {alert_days}", font=("Segoe UI", 12), bg="#e0f7fa").pack(pady=10)
 
-    back_button = ttk.Button(main_frame, text="Volver", command=show_main_screen, style="TButton")
-    back_button.pack(pady=10)
+    # Botón de regreso
+    ttk.Button(main_frame, text="Regresar a la Pantalla Principal", command=show_main_screen).pack(pady=10)
 
-# Configuración inicial de la ventana
-root = tk.Tk()
-root.title("Monitoreo de Tanques")
-root.geometry("800x600")
-root.config(bg="#e0f7fa")
+# Función principal para inicializar la interfaz
+def main():
+    root = tk.Tk()
+    root.title("Monitoreo de Tanque")
+    root.geometry("1000x600")
+    root.config(bg="#e0f7fa")
 
-# Variables para los datos de la interfaz
-tank_level = tk.StringVar(value="---")
-humidity_level = tk.StringVar(value="---")
-leak_sensor = tk.StringVar(value="---")
+    global main_frame
+    main_frame = tk.Frame(root, bg="#e0f7fa")
+    main_frame.pack(fill="both", expand=True)
 
-# Estilo de los botones
-style = ttk.Style()
-style.configure("TButton", font=("Segoe UI", 12))
+    global tank_level, humidity_level, leak_sensor
+    tank_level = tk.StringVar()
+    humidity_level = tk.StringVar()
+    leak_sensor = tk.StringVar()
 
-# Frame principal
-main_frame = tk.Frame(root, bg="#e0f7fa")
-main_frame.pack(fill=tk.BOTH, expand=True)
+    # Llamar a la pantalla principal
+    show_main_screen()
 
-# Mostrar la pantalla principal
-show_main_screen()
+    refresh_data_and_graph(root)  # Iniciar la actualización de los datos y la gráfica
 
-# Iniciar el hilo de lectura del Arduino
-arduino_thread = threading.Thread(target=read_arduino_data, daemon=True)
-arduino_thread.start()
+    # Iniciar la lectura del Arduino en un hilo separado
+    threading.Thread(target=read_arduino_data, daemon=True).start()
 
-# Ejecutar el loop principal de Tkinter
-root.mainloop()
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
